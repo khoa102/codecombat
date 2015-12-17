@@ -47,13 +47,18 @@ module.exports.put = (path, app) ->
     mw.db.returnDoc()
   )
   
-#module.exports.postNewVersion = (path, app) ->
-# app.post(path,
-#   mw.auth.checkHasPermission(['admin', 'artisan'])
-#   mw.db.setModel(Article)
-#   mw.db.initDBQ()
-#   mw.db.getDocFromHandle({ prop: 'parent' })
-#   mw.auth.checkHas
-#   mw.plugins.getParentDoc()
-#   mw.plugins.pickBodyAndParent()
-# )
+module.exports.postNewVersion = (path, app) ->
+ app.post(path,
+   mw.auth.checkHasPermission(['admin', 'artisan'])
+   mw.db.setModel(Article)
+   mw.db.initDoc()
+   mw.db.initDBQ()
+   mw.db.getDocFromHandle({ prop: 'parent' })
+   mw.plugins.extendDocWithParent({ prop: 'parent' })
+   mw.db.pickBody({ unsetMissing: true })
+   mw.plugins.getLatest()
+   mw.plugins.transferLatest()
+   mw.db.saveDoc()
+   mw.plugins.notifyChange()
+   mw.db.returnCreatedDoc()
+ )

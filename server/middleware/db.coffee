@@ -13,7 +13,7 @@ module.exports = mw =
       
       
   getDocFromHandle: (options) ->
-    options = _.extend({param: 'handle', prop: 'doc'}, {})
+    options = _.extend({param: 'handle', prop: 'doc'}, options)
     
     return (req, res, next) ->
       handle = req.params[options.param]
@@ -34,7 +34,7 @@ module.exports = mw =
         
         
   returnDoc: (options) ->
-    options = _.extend({param: 'handle', prop: 'doc'}, {})
+    options = _.extend({param: 'handle', prop: 'doc'}, options)
     
     return (req, res) ->
       return respond.ok(res, req.doc.toObject())
@@ -61,7 +61,7 @@ module.exports = mw =
       
   
   pickBody: (options) ->
-    options = _.extend({}, options)
+    options = _.extend({ unsetMissing: false }, options)
     
     return (req, res, next) ->
       if _.isEmpty(req.body)
@@ -83,9 +83,8 @@ module.exports = mw =
       for prop in props
         if (val = req.body[prop])?
           req.doc.set prop, val
-        # Hold on, gotta think about that one
-        #else if document.get(prop)? and req.method isnt 'PATCH'
-        #  document.set prop, 'undefined'
+        else if options.unsetMissing and req.doc.get(prop)?
+          req.doc.set prop, undefined
 
       next()
 
@@ -112,7 +111,7 @@ module.exports = mw =
     options = _.extend({}, options)
     
     return (req, res, next) ->
-      req.doc.save (err) ->
+      req.doc.save (err, doc) ->
         if err
           if err.name is 'MongoError' and err.code is 11000
             return respond.conflict(res, { message: 'MongoDB conflict error.' })
