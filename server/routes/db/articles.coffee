@@ -1,0 +1,59 @@
+mw = require '../../middleware'
+Article = require '../../models/Article'
+respond = require '../../commons/respond'
+
+
+module.exports.get = (path, app) ->
+  app.get(path,
+    mw.db.setModel(Article)
+    mw.db.initDBQ()
+    mw.db.limitDBQ()
+    mw.db.skipDBQ()
+    mw.db.projectDBQ()
+    mw.db.customSearchDBQ()
+    mw.plugins.viewI18NCoverage()
+    mw.plugins.viewSearch()
+  )
+
+module.exports.post = (path, app) ->
+  app.post(path, 
+    mw.auth.checkHasPermission(['admin', 'artisan'])
+    mw.db.setModel(Article)
+    mw.db.initDoc()
+    mw.db.pickBody()
+    mw.db.validateDoc()
+    mw.db.saveDoc()
+    mw.db.returnCreatedDoc()
+  )
+  
+module.exports.getByHandle = (path, app) ->
+  app.get(path,
+    mw.db.setModel(Article)
+    mw.db.initDBQ()
+    mw.db.projectDBQ()
+    mw.db.getDocFromHandle()
+    mw.db.returnDoc()
+  )
+  
+module.exports.put = (path, app) ->
+  app.put(path,
+    mw.auth.checkHasPermission('admin')
+    mw.db.setModel(Article)
+    mw.db.initDBQ()
+    mw.db.getDocFromHandle()
+    mw.db.pickBody()
+    mw.db.validateDoc()
+    mw.db.saveDoc()
+    mw.db.returnDoc()
+  )
+  
+#module.exports.postNewVersion = (path, app) ->
+# app.post(path,
+#   mw.auth.checkHasPermission(['admin', 'artisan'])
+#   mw.db.setModel(Article)
+#   mw.db.initDBQ()
+#   mw.db.getDocFromHandle({ prop: 'parent' })
+#   mw.auth.checkHas
+#   mw.plugins.getParentDoc()
+#   mw.plugins.pickBodyAndParent()
+# )
