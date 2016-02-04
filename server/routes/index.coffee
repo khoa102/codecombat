@@ -4,10 +4,10 @@ module.exports.setup = (app) ->
   Article = require '../models/Article'
   app.get('/db/article', mw.rest.get(Article))
   app.post('/db/article', mw.auth.checkHasPermission(['admin', 'artisan']), mw.rest.post(Article))
+  app.get('/db/article/:handle', mw.rest.getByHandle(Article))
 
   articles = require('./db/articles')
   articles.put('/db/article/:handle', app)
-  articles.getByHandle('/db/article/:handle', app)
   articles.postNewVersion('/db/article/:handle/new-version', app)
   
   app.get '/db/products', require('./db/product').get

@@ -3,15 +3,6 @@ Article = require '../../models/Article'
 respond = require '../../commons/respond'
 
 
-module.exports.getByHandle = (path, app) ->
-  app.get(path,
-    mw.db.setModel(Article)
-    mw.db.initDBQ()
-    mw.db.projectDBQ()
-    mw.db.getDocFromHandle()
-    mw.db.returnDoc()
-  )
-  
 module.exports.put = (path, app) ->
   app.put(path,
     mw.auth.checkHasPermission('admin')

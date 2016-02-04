@@ -53,3 +53,27 @@ module.exports =
         catch err
           next(err)
         
+  getByHandle: (Model, options) ->
+    options = _.extend({}, options)
+
+    return (req, res, next) ->
+      utils.run ->
+
+        try
+          dbq = Model.find()
+          dbq.select(utils.getProjectFromReq(req))
+          handle = req.params.handle
+          if not handle
+            throw new errors.UnprocessableEntity('No handle provided.')
+          if utils.isID(handle)
+            dbq.findOne({ _id: handle })
+          else
+            dbq.findOne({ slug: handle })
+    
+          doc = yield dbq.exec()
+          if not doc
+            throw new errors.NotFound('Document not found.')
+          res.status(200).send(doc.toObject())
+          
+        catch err
+          next(err)
