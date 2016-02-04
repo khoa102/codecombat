@@ -3,18 +3,6 @@ Article = require '../../models/Article'
 respond = require '../../commons/respond'
 
 
-module.exports.get = (path, app) ->
-  app.get(path,
-    mw.db.setModel(Article)
-    mw.db.initDBQ()
-    mw.db.limitDBQ()
-    mw.db.skipDBQ()
-    mw.db.projectDBQ()
-    mw.db.customSearchDBQ()
-    mw.plugins.viewI18NCoverage()
-    mw.plugins.viewSearch()
-  )
-
 module.exports.post = (path, app) ->
   app.post(path, 
     mw.auth.checkHasPermission(['admin', 'artisan'])

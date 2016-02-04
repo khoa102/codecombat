@@ -1,6 +1,10 @@
+mw = require '../middleware'
+
 module.exports.setup = (app) ->
+  Article = require '../models/Article'
+  app.get('/db/article', mw.rest.get(Article))
+
   articles = require('./db/articles')
-  articles.get('/db/article', app)
   articles.post('/db/article', app)
   articles.put('/db/article/:handle', app)
   articles.getByHandle('/db/article/:handle', app)

@@ -2,6 +2,7 @@ AnalyticsString = require '../analytics/AnalyticsString'
 log = require 'winston'
 mongoose = require 'mongoose'
 config = require '../../server_config'
+errors = require '../commons/errors'
 
 module.exports =
   isID: (id) -> _.isString(id) and id.length is 24 and id.match(/[a-f0-9]/gi)?.length is 24
@@ -92,3 +93,152 @@ module.exports =
         @analyticsStringCache[str] = document._id
         return callback @analyticsStringCache[str]
       insertString()
+
+  run: (fn) ->
+    gen = fn()
+    
+    next = (err, res) ->
+      if err
+        return gen.throw(err)
+      ret = gen.next(res)
+      if ret.done
+        return
+      if typeof ret.value.then == 'function'
+        try
+          ret.value.then ((value) ->
+            next null, value
+            return
+          ), next
+        catch e
+          gen.throw e
+      else
+        try
+          ret.value next
+        catch e
+          gen.throw e
+      return
+    
+    next()
+    return
+
+
+  getLimitFromReq: (req, options) ->
+    options = _.extend({
+      max: 1000
+      default: 100
+    }, options)
+    
+    limit = options.default
+    
+    if req.query.limit
+      limit = parseInt(req.query.limit)
+      valid = tv4.validate(limit, {
+        type: 'integer'
+        maximum: options.max
+        minimum: 1
+      })
+      if not valid
+        throw new errors.UnprocessableEntity('Invalid limit parameter.')
+    
+    return limit
+    
+
+  getSkipFromReq: (req, options) ->
+    options = _.extend({
+      max: 1000000
+      default: 0
+    }, options)
+  
+    skip = options.default
+  
+    if req.query.skip
+      skip = parseInt(req.query.skip)
+      valid = tv4.validate(skip, {
+        type: 'integer'
+        maximum: options.max
+        minimum: 0
+      })
+      if not valid
+        throw new errors.UnprocessableEntity('Invalid sort parameter.')
+  
+    return skip
+    
+
+  getProjectFromReq: (req, options) ->
+    options = _.extend({}, options)
+    return null unless req.query.project
+    projection = {}
+  
+    if req.query.project is 'true'
+      projection = {original: 1, name: 1, version: 1, description: 1, slug: 1, kind: 1, created: 1, permissions: 1}
+    else
+      for field in req.query.project.split(',')
+        projection[field] = 1
+  
+    return projection
+
+
+  applyCustomSearchToDBQ: (req, dbq) ->
+    specialParameters = ['term', 'project', 'conditions']
+  
+    return unless req.user?.isAdmin()
+    return unless req.query.filter or req.query.conditions
+  
+    # admins can send any sort of query down the wire
+    # Example URL: http://localhost:3000/db/user?filter[anonymous]=true
+    filter = {}
+    if 'filter' of req.query
+      for own key, val of req.query.filter
+        if key not in specialParameters
+          try
+            filter[key] = JSON.parse(val)
+          catch SyntaxError
+            throw new errors.UnprocessableEntity("Could not parse filter for key '#{key}'.")
+    dbq.find(filter)
+  
+    # Conditions are chained query functions, for example: query.find().limit(20).sort('-dateCreated')
+    # Example URL: http://localhost:3000/db/user?conditions[limit]=20&conditions[sort]="-dateCreated"
+    for own key, val of req.query.conditions
+      if not dbq[key]
+        throw new errors.UnprocessableEntity("No query condition '#{key}'.")
+      try
+        val = JSON.parse(val)
+        dbq[key](val)
+      catch SyntaxError
+        throw new errors.UnprocessableEntity("Could not parse condition for key '#{key}'.")
+
+  viewSearch: (dbq, req, done) ->
+    Model = dbq.model
+    # TODO: Make this function only alter dbq or returns a find. It should not also execute the query.
+    term = req.query.term
+    matchedObjects = []
+    filters = if Model.schema.uses_coco_versions or Model.schema.uses_coco_permissions then [filter: {index: true}] else [filter: {}]
+  
+    if Model.schema.uses_coco_permissions and req.user
+      filters.push {filter: {index: req.user.get('id')}}
+  
+    for filter in filters
+      callback = (err, results) ->
+        return done(new errors.InternalServerError('Error fetching search results.', {err: err})) if err
+        for r in results.results ? results
+          obj = r.obj ? r
+          continue if obj in matchedObjects  # TODO: probably need a better equality check
+          matchedObjects.push obj
+        filters.pop()  # doesn't matter which one
+        unless filters.length
+          done(null, matchedObjects)
+  
+      if term
+        filter.filter.$text = $search: term
+      else if filters.length is 1 and filters[0].filter?.index is true
+        # All we are doing is an empty text search, but that doesn't hit the index,
+        # so we'll just look for the slug.
+        filter.filter = slug: {$exists: true}
+  
+      # This try/catch is here to handle when a custom search tries to find by slug. TODO: Fix this more gracefully.
+      try
+        dbq.find filter.filter
+      catch
+      dbq.exec callback
+    
+    

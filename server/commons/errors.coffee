@@ -1,4 +1,5 @@
 log = require 'winston'
+_ = require 'lodash'
 
 module.exports.custom = (res, code=500, message='Internal Server Error') ->
   log.debug "#{code}: #{message}"
@@ -56,3 +57,54 @@ module.exports.clientTimeout = (res, message='The server did not receive the cli
   log.debug "408: #{message}"
   res.send 408, message
   res.end()
+  
+  
+# Objects
+
+class NetworkError
+  code: 0
+
+  constructor: (@message, options) ->
+    @stack = (new Error()).stack
+    _.assign(@, options)
+  
+  toJSON: ->
+    _.pick(@, 'status', 'message', 'name', 'code', 'validationErrors', 'property')
+
+module.exports.NetworkError = NetworkError
+
+module.exports.Unauthorized = class Unauthorized extends NetworkError
+  code: 401
+  name: 'Unauthorized'
+
+module.exports.Forbidden = class Forbidden extends NetworkError
+  code: 403
+  name: 'Forbidden'
+
+module.exports.NotFound = class NotFound extends NetworkError
+  code: 404
+  name: 'Not Found'
+
+module.exports.MethodNotAllowed = class MethodNotAllowed extends NetworkError
+  code: 405
+  name: 'Method Not Allowed'
+
+module.exports.RequestTimeout = class RequestTimeout extends NetworkError
+  code: 407
+  name: 'Request Timeout'
+
+module.exports.Conflict = class Conflict extends NetworkError
+  code: 408
+  name: 'Conflict'
+
+module.exports.UnprocessableEntity = class UnprocessableEntity extends NetworkError
+  code: 422
+  name: 'Unprocessable Entity'
+
+module.exports.InternalServerError = class InternalServerError extends NetworkError
+  code: 500
+  name: 'Internal Server Error'
+
+module.exports.GatewayTimeout = class GatewayTimeout extends NetworkError
+  code: 504
+  name: 'Gateway Timeout'

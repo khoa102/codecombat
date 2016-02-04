@@ -20,6 +20,7 @@ hipchat = require './server/hipchat'
 global.tv4 = require 'tv4' # required for TreemaUtils to work
 global.jsondiffpatch = require 'jsondiffpatch'
 global.stripe = require('stripe')(config.stripe.secretKey)
+errors = require './server/commons/errors'
 
 
 productionLogging = (tokens, req, res) ->
@@ -48,6 +49,8 @@ developmentLogging = (tokens, req, res) ->
 setupErrorMiddleware = (app) ->
   app.use (err, req, res, next) ->
     if err
+      if err instanceof errors.NetworkError
+        return res.status(err.code).send(err.toJSON())
       if err.status and 400 <= err.status < 500
         res.status(err.status).send("Error #{err.status}")
         return
