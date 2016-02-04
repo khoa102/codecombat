@@ -6,11 +6,8 @@ module.exports.setup = (app) ->
   app.post('/db/article', mw.auth.checkHasPermission(['admin', 'artisan']), mw.rest.post(Article))
   app.get('/db/article/:handle', mw.rest.getByHandle(Article))
   app.put('/db/article', mw.auth.checkHasPermission(['admin']), mw.rest.put(Article))
+  app.post('/db/article/:handle/new-version', mw.auth.checkHasPermission(['admin', 'artisan']), mw.rest.postNewVersion(Article))
 
-  articles = require('./db/articles')
-#  articles.put('/db/article/:handle', app)
-  articles.postNewVersion('/db/article/:handle/new-version', app)
-  
   app.get '/db/products', require('./db/product').get
 
   app.get '/healthcheck', (req, res) ->

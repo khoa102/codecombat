@@ -293,3 +293,19 @@ module.exports = utils =
       dbq.findOne({ slug: handle })
 
     dbq.exec(done)
+    
+    
+  initDoc: (req, Model) ->
+    # TODO: Move to model superclass or plugins?
+    doc = new Model({})
+
+    if Model.schema.is_patchable
+      watchers = [req.user.get('_id')]
+      if req.user.isAdmin()  # https://github.com/codecombat/codecombat/issues/1105
+        nick = mongoose.Types.ObjectId('512ef4805a67a8c507000001')
+        watchers.push nick unless _.find watchers, (id) -> id.equals nick
+      doc.set 'watchers', watchers
+    
+    if Model.schema.uses_coco_versions
+      doc.set('original', doc._id)
+      doc.set('creator', req.user._id)

@@ -1,6 +1,7 @@
 require '../common'
 mw = require '../middleware'
 async = require 'async'
+_ = require 'lodash'
 
 describe 'GET /db/article', ->
   articleData1 = { name: 'Article 1', body: 'Article 1 body cow', i18nCoverage: [] }
