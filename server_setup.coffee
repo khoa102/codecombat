@@ -21,6 +21,7 @@ global.tv4 = require 'tv4' # required for TreemaUtils to work
 global.jsondiffpatch = require 'jsondiffpatch'
 global.stripe = require('stripe')(config.stripe.secretKey)
 errors = require './server/commons/errors'
+respond = require './server/commons/respond'
 
 
 productionLogging = (tokens, req, res) ->
@@ -49,11 +50,21 @@ developmentLogging = (tokens, req, res) ->
 setupErrorMiddleware = (app) ->
   app.use (err, req, res, next) ->
     if err
+      # TODO: Make all errors use this
       if err instanceof errors.NetworkError
         return res.status(err.code).send(err.toJSON())
+      
+      # These if clauses are for deprecated error systems
       if err.status and 400 <= err.status < 500
         res.status(err.status).send("Error #{err.status}")
         return
+      if err.name is 'MongoError' and err.code is 11000
+        return respond.conflict(res, { message: 'MongoDB conflict error.' })
+      if err.code is 422 and err.response
+        return respond.unprocessableEntity(res, err.response)
+      if err.code is 409 and err.response
+        return respond.conflict(res, err.response)
+        
       res.status(err.status ? 500).send(error: "Something went wrong!")
       message = "Express error: #{req.method} #{req.path}: #{err.message}"
       log.error "#{message}, stack: #{err.stack}"

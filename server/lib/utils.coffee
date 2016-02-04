@@ -3,6 +3,7 @@ log = require 'winston'
 mongoose = require 'mongoose'
 config = require '../../server_config'
 errors = require '../commons/errors'
+_ = require 'lodash'
 
 module.exports =
   isID: (id) -> _.isString(id) and id.length is 24 and id.match(/[a-f0-9]/gi)?.length is 24
@@ -240,5 +241,38 @@ module.exports =
         dbq.find filter.filter
       catch
       dbq.exec callback
+
+      
+  assignBody: (req, doc, options={}) ->
+    if _.isEmpty(req.body)
+      throw new errors.UnprocessableEntity('No input')
+
+    props = doc.schema.editableProperties.slice()
+
+    if doc.isNew
+      props = props.concat doc.schema.postEditableProperties
+
+    if doc.schema.uses_coco_permissions and req.user
+      isOwner = doc.getAccessForUserObjectId(req.user._id) is 'owner'
+      if doc.isNew or isOwner or req.user?.isAdmin()
+        props.push 'permissions'
+
+    props.push 'commitMessage' if doc.schema.uses_coco_versions
+    props.push 'allowPatches' if doc.schema.is_patchable
+
+    for prop in props
+      if (val = req.body[prop])?
+        doc.set prop, val
+      else if options.unsetMissing and doc.get(prop)?
+        doc.set prop, undefined
     
     
+  validateDoc: (doc) ->
+    obj = doc.toObject()
+    # Hack to get saving of Users to work. Probably should replace these props with strings
+    # so that validation doesn't get hung up on Date objects in the documents.
+    delete obj.dateCreated
+    tv4 = require('tv4').tv4
+    result = tv4.validateMultiple(obj, doc.schema.jsonSchema)
+    if not result.valid
+      throw new errors.UnprocessableEntity('JSON-schema validation failed', { validationErrors: result.errors })

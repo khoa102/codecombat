@@ -3,17 +3,6 @@ Article = require '../../models/Article'
 respond = require '../../commons/respond'
 
 
-module.exports.post = (path, app) ->
-  app.post(path, 
-    mw.auth.checkHasPermission(['admin', 'artisan'])
-    mw.db.setModel(Article)
-    mw.db.initDoc()
-    mw.db.pickBody()
-    mw.db.validateDoc()
-    mw.db.saveDoc()
-    mw.db.returnCreatedDoc()
-  )
-  
 module.exports.getByHandle = (path, app) ->
   app.get(path,
     mw.db.setModel(Article)
