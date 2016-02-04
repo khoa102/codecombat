@@ -3,12 +3,9 @@ Promise = require 'bluebird'
 errors = require '../commons/errors'
 
 module.exports =
-  get: (Model, options) ->
-    options = _.extend({}, options)
-  
+  get: (Model, options={}) ->
     return (req, res, next) ->
       utils.run ->
-        
         try
           dbq = Model.find()
           dbq.limit(utils.getLimitFromReq(req))
@@ -25,12 +22,9 @@ module.exports =
         catch err
           next(err)
 
-  post: (Model, options) ->
-    options = _.extend({}, options)
-    
+  post: (Model, options={}) ->
     return (req, res, next) ->
       utils.run ->
-        
         try
           doc = new Model({})
           
@@ -53,27 +47,30 @@ module.exports =
         catch err
           next(err)
         
-  getByHandle: (Model, options) ->
-    options = _.extend({}, options)
-
+  getByHandle: (Model, options={}) ->
     return (req, res, next) ->
       utils.run ->
-
         try
-          dbq = Model.find()
-          dbq.select(utils.getProjectFromReq(req))
-          handle = req.params.handle
-          if not handle
-            throw new errors.UnprocessableEntity('No handle provided.')
-          if utils.isID(handle)
-            dbq.findOne({ _id: handle })
-          else
-            dbq.findOne({ slug: handle })
-    
-          doc = yield dbq.exec()
+          doc = yield Promise.promisify(utils.getDocFromHandle)(req, Model)
           if not doc
             throw new errors.NotFound('Document not found.')
           res.status(200).send(doc.toObject())
           
+        catch err
+          next(err)
+          
+  put: (Model, options={}) ->
+    return (req, res, next) ->
+      utils.run ->
+        try
+          doc = yield Promise.promisify(utils.getDocFromHandle)(req, Model)
+          if not doc
+            throw new errors.NotFound('Document not found.')
+          
+          utils.assignBody(req, doc)
+          utils.validateDoc(doc)
+          doc = yield doc.save()
+          res.status(200).send(doc.toObject())
+
         catch err
           next(err)

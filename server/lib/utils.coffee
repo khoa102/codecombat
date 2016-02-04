@@ -5,7 +5,7 @@ config = require '../../server_config'
 errors = require '../commons/errors'
 _ = require 'lodash'
 
-module.exports =
+module.exports = utils =
   isID: (id) -> _.isString(id) and id.length is 24 and id.match(/[a-f0-9]/gi)?.length is 24
 
   getCodeCamel: (numWords=3) ->
@@ -276,3 +276,20 @@ module.exports =
     result = tv4.validateMultiple(obj, doc.schema.jsonSchema)
     if not result.valid
       throw new errors.UnprocessableEntity('JSON-schema validation failed', { validationErrors: result.errors })
+
+      
+  getDocFromHandle: (req, Model, options, done) ->
+    if _.isFunction(options)
+      done = options
+      options = {}
+
+    dbq = Model.find()
+    handle = req.params.handle
+    if not handle
+      return done(new errors.UnprocessableEntity('No handle provided.'))
+    if utils.isID(handle)
+      dbq.findOne({ _id: handle })
+    else
+      dbq.findOne({ slug: handle })
+
+    dbq.exec(done)
