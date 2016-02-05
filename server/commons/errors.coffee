@@ -61,6 +61,37 @@ module.exports.clientTimeout = (res, message='The server did not receive the cli
   
 # Objects
 
+errorResponseSchema = {
+  type: 'object'
+  required: ['errorName', 'code', 'message']
+  properties: {
+    error: {
+      description: 'Error object which the callback returned'
+    }
+    errorName: {
+      type: 'string'
+      description: 'Human readable error code name'
+    }
+    code: {
+      type: 'integer'
+      description: 'HTTP error code'
+    }
+    validationErrors: {
+      type: 'array'
+      description: 'TV4 array of validation error objects'
+    }
+    message: {
+      type: 'string'
+      description: 'Human readable descripton of the error'
+    }
+    property: {
+      type: 'string'
+      description: 'Property which is related to the error (conflict, validation).'
+    }
+  }
+}
+errorProps = _.keys(errorResponseSchema.properties)
+
 class NetworkError
   code: 0
 
@@ -69,7 +100,7 @@ class NetworkError
     _.assign(@, options)
   
   toJSON: ->
-    _.pick(@, 'status', 'message', 'name', 'code', 'validationErrors', 'property')
+    _.pick(@, errorProps...)
 
 module.exports.NetworkError = NetworkError
 
@@ -94,7 +125,7 @@ module.exports.RequestTimeout = class RequestTimeout extends NetworkError
   name: 'Request Timeout'
 
 module.exports.Conflict = class Conflict extends NetworkError
-  code: 408
+  code: 409
   name: 'Conflict'
 
 module.exports.UnprocessableEntity = class UnprocessableEntity extends NetworkError
