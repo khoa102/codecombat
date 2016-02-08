@@ -1,5 +1,6 @@
 async = require 'async'
 utils = require '../../server/lib/utils'
+co = require 'co'
 
 module.exports = mw =
   getURL: (path) -> 'http://localhost:3001' + path
@@ -54,6 +55,13 @@ module.exports = mw =
     
   logout: (done) ->
     request.post mw.getURL('/auth/logout'), done
-    
+
+  wrap: (gen) ->
+    fn = co.wrap(gen)
+    return (done) ->
+      fn.apply(@, [done]).catch (err) -> done.fail(err)
+  
+
+
 Promise = require 'bluebird'
 Promise.promisifyAll(module.exports)
