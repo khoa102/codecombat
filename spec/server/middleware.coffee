@@ -39,10 +39,16 @@ module.exports = mw =
       done(err, user)
 
   initAdmin: (options, done) ->
+    if _.isFunction(options)
+      done = options
+      options = {}
     options = _.extend({permissions: ['admin']}, options)
     return @initUser(options, done)
 
   initArtisan: (options, done) ->
+    if _.isFunction(options)
+      done = options
+      options = {}
     options = _.extend({permissions: ['artisan']}, options)
     return @initUser(options, done)
     
