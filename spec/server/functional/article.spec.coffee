@@ -1,6 +1,5 @@
 require '../common'
 utils = require '../utils'
-async = require 'async'
 _ = require 'lodash'
 Promise = require 'bluebird'
 
