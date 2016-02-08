@@ -445,9 +445,25 @@ describe 'POST /db/article/:handle/new-version', ->
     done()
 
   
-  it 'notifies watchers of changes'
-  
-  it 'sends a notification to artisan and main HipChat channels'
+  it 'notifies watchers of changes', utils.wrap (done) ->
+    sendwithus = require '../../../server/sendwithus'
+    spyOn(sendwithus.api, 'send').and.callFake (context, cb) ->
+      expect(context.email_id).toBe(sendwithus.templates.change_made_notify_watcher)
+      expect(context.recipient.address).toBe('test@gmail.com')
+      done()
+    user = yield User({email: 'test@gmail.com', name: 'a user'}).save()
+    article = yield Article.findById(articleID)
+    article.set('watchers', article.get('watchers').concat([user.get('_id')]))
+    yield article.save()
+    yield postNewVersion({ name: 'Article name', body: 'New body', commitMessage: 'Commit message' })
+    
+    
+  it 'sends a notification to artisan and main HipChat channels', utils.wrap (done) ->
+    hipchat = require '../../../server/hipchat'
+    spyOn(hipchat, 'sendHipChatMessage')
+    yield postNewVersion({ name: 'Article name', body: 'New body' })
+    expect(hipchat.sendHipChatMessage).toHaveBeenCalled()
+    done()
   
   
 describe 'GET /db/article/:handle/version/:version', ->
