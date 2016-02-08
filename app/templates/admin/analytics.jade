@@ -23,10 +23,16 @@ block content
     h3 KPI 60 days
     .kpi-recent-chart.line-chart-container
 
-    h3 KPI 300 days
+    h3 KPI 365 days
     .kpi-chart.line-chart-container
 
     h3 Active Classes 90 days
+    .small Active class: 12+ students in a classroom, with 6+ who played in last 30 days.
+    .small Paid student: user.coursePrepaidID set and prepaid.properties.trialRequestID NOT set
+    .small Trial student: user.coursePrepaidID set and prepaid.properties.trialRequestID set
+    .small Paid class: at least one paid student in the classroom
+    .small Trial class: not paid, at least one trial student in classroom
+    .small Free class: not paid, not trial
     .active-classes-chart.line-chart-container
 
     h3 Recurring Revenue 90 days
@@ -34,6 +40,9 @@ block content
 
     h3 Active Users 90 days
     .active-users-chart.line-chart-container
+
+    h3 Enrollments Issued and Redeemed 90 days
+    .paid-courses-chart.line-chart-container
 
     h3 Furthest Course
     .small Teacher: owner of a course instance
@@ -53,6 +62,22 @@ block content
             td= count
             td= view.studentCourseDistribution[courseIndex] || 0
             td= Math.round((view.studentCourseDistribution[courseIndex] || 0) / count)
+    else
+      div Loading ...
+
+    h3 School Counts
+    .small Only including schools with #{view.minSchoolCount}+ counts
+    if view.schoolCounts
+      table.table.table-striped.table-condensed
+        tr
+          th
+          th School Name
+          th User Count
+        each val, i in view.schoolCounts
+          tr
+            td= i + 1
+            td= val.schoolName
+            td= val.count
     else
       div Loading ...
 
@@ -97,3 +122,25 @@ block content
           else
             td
             td
+
+    h1 Enrollments
+    table.table.table-striped.table-condensed
+      tr
+        th Day
+        th Paid Enrollments Issued
+        th Paid Enrollments Redeemed
+        th Trial Enrollments Issued
+        th Trial Enrollments Redeemed
+      each day in enrollmentDays
+        tr
+          td= day
+          if dayEnrollmentsMap[day] 
+            td= dayEnrollmentsMap[day].paidIssued || 0
+            td= dayEnrollmentsMap[day].paidRedeemed || 0
+            td= dayEnrollmentsMap[day].trialIssued || 0
+            td= dayEnrollmentsMap[day].trialRedeemed || 0
+          else
+            td 0
+            td 0
+            td 0
+            td 0
