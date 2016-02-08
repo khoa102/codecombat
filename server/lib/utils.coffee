@@ -4,6 +4,7 @@ mongoose = require 'mongoose'
 config = require '../../server_config'
 errors = require '../commons/errors'
 _ = require 'lodash'
+Promise = require 'bluebird'
 
 module.exports = utils =
   isID: (id) -> _.isString(id) and id.length is 24 and id.match(/[a-f0-9]/gi)?.length is 24
@@ -309,3 +310,5 @@ module.exports = utils =
     if Model.schema.uses_coco_versions
       doc.set('original', doc._id)
       doc.set('creator', req.user._id)
+
+Promise.promisifyAll(module.exports)
