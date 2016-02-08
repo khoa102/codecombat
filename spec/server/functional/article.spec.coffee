@@ -3,159 +3,138 @@ mw = require '../middleware'
 async = require 'async'
 _ = require 'lodash'
 utils = require '../../../server/lib/utils'
-Promise = require 'bluebird'
+co = require 'co'
 
 describe 'GET /db/article', ->
   articleData1 = { name: 'Article 1', body: 'Article 1 body cow', i18nCoverage: [] }
   articleData2 = { name: 'Article 2', body: 'Article 2 body moo' }
   
-  beforeEach (done) ->
-    test = @
-    utils.run ->
-      yield mw.clearModelsAsync([Article])
-      test.admin = yield mw.initAdminAsync({})
-      yield mw.loginUserAsync(test.admin)
-      yield request.postAsync(getURL('/db/article'), { json: articleData1 })
-      yield request.postAsync(getURL('/db/article'), { json: articleData2 })
-      yield mw.logoutAsync()
-      done()
+  beforeEach (done) -> co =>
+    yield mw.clearModelsAsync([Article])
+    @admin = yield mw.initAdminAsync({})
+    yield mw.loginUserAsync(@admin)
+    yield request.postAsync(getURL('/db/article'), { json: articleData1 })
+    yield request.postAsync(getURL('/db/article'), { json: articleData2 })
+    yield mw.logoutAsync()
+    done()
       
       
-  it 'returns an array of Article objects', (done) ->
-    utils.run ->
-      [res, body] = yield request.getAsync { uri: getURL('/db/article'), json: true }
-      expect(body.length).toBe(2)
-      done()
+  it 'returns an array of Article objects', (done) -> co ->
+    [res, body] = yield request.getAsync { uri: getURL('/db/article'), json: true }
+    expect(body.length).toBe(2)
+    done()
       
 
-  it 'accepts a limit parameter', (done) ->
-    utils.run ->
-      [res, body] = yield request.getAsync {uri: getURL('/db/article?limit=1'), json: true}
-      expect(body.length).toBe(1)
-      done()
+  it 'accepts a limit parameter', (done) -> co ->
+    [res, body] = yield request.getAsync {uri: getURL('/db/article?limit=1'), json: true}
+    expect(body.length).toBe(1)
+    done()
 
 
-  it 'returns 422 for an invalid limit parameter', (done) ->
-    utils.run ->
-      [res, body] = yield request.getAsync {uri: getURL('/db/article?limit=word'), json: true}
-      expect(res.statusCode).toBe(422)
-      done()
+  it 'returns 422 for an invalid limit parameter', (done) -> co ->
+    [res, body] = yield request.getAsync {uri: getURL('/db/article?limit=word'), json: true}
+    expect(res.statusCode).toBe(422)
+    done()
   
 
-  it 'accepts a skip parameter', (done) ->
-    utils.run ->
-      [res, body] = yield request.getAsync {uri: getURL('/db/article?skip=1'), json: true}
-      expect(body.length).toBe(1)
-      [res, body] = yield request.getAsync {uri: getURL('/db/article?skip=2'), json: true}
-      expect(body.length).toBe(0)
-      done()
+  it 'accepts a skip parameter', (done) -> co ->
+    [res, body] = yield request.getAsync {uri: getURL('/db/article?skip=1'), json: true}
+    expect(body.length).toBe(1)
+    [res, body] = yield request.getAsync {uri: getURL('/db/article?skip=2'), json: true}
+    expect(body.length).toBe(0)
+    done()
 
       
-  it 'returns 422 for an invalid skip parameter', (done) ->
-    utils.run ->
-      [res, body] = yield request.getAsync {uri: getURL('/db/article?skip=???'), json: true}
-      expect(res.statusCode).toBe(422)
-      done()
+  it 'returns 422 for an invalid skip parameter', (done) -> co ->
+    [res, body] = yield request.getAsync {uri: getURL('/db/article?skip=???'), json: true}
+    expect(res.statusCode).toBe(422)
+    done()
   
 
-  it 'accepts a custom project parameter', (done) ->
-    utils.run ->
-      [res, body] = yield request.getAsync {uri: getURL('/db/article?project=name,body'), json: true}
-      expect(body.length).toBe(2)
-      for doc in body
-        expect(_.size(_.xor(_.keys(doc), ['_id', 'name', 'body']))).toBe(0)
-      done()
+  it 'accepts a custom project parameter', (done) -> co ->
+    [res, body] = yield request.getAsync {uri: getURL('/db/article?project=name,body'), json: true}
+    expect(body.length).toBe(2)
+    for doc in body
+      expect(_.size(_.xor(_.keys(doc), ['_id', 'name', 'body']))).toBe(0)
+    done()
 
 
-  it 'returns a default projection if project is "true"', (done) ->
-    utils.run ->
-      [res, body] = yield request.getAsync {uri: getURL('/db/article?project=true'), json: true}
-      expect(res.statusCode).toBe(200)
-      expect(body.length).toBe(2)
-      expect(body[0].body).toBeUndefined()
-      expect(body[0].version).toBeDefined()
-      done()
+  it 'returns a default projection if project is "true"', (done) -> co ->
+    [res, body] = yield request.getAsync {uri: getURL('/db/article?project=true'), json: true}
+    expect(res.statusCode).toBe(200)
+    expect(body.length).toBe(2)
+    expect(body[0].body).toBeUndefined()
+    expect(body[0].version).toBeDefined()
+    done()
     
       
-  it 'accepts custom filter parameters', (done) ->
-    test = @
-    utils.run ->
-      yield mw.loginUserAsync(test.admin)
-      [res, body] = yield request.getAsync {uri: getURL('/db/article?filter[slug]="article-1"'), json: true}
-      expect(body.length).toBe(1)
-      done()
+  it 'accepts custom filter parameters', (done) -> co =>
+    yield mw.loginUserAsync(@admin)
+    [res, body] = yield request.getAsync {uri: getURL('/db/article?filter[slug]="article-1"'), json: true}
+    expect(body.length).toBe(1)
+    done()
   
 
-  it 'ignores custom filter parameters for non-admins', (done) ->
-    utils.run ->
-      user = yield mw.initUserAsync()
-      yield mw.loginUserAsync(user)
-      [res, body] = yield request.getAsync {uri: getURL('/db/article?filter[slug]="article-1"'), json: true}
-      expect(body.length).toBe(2)
-      done()
+  it 'ignores custom filter parameters for non-admins', (done) -> co ->
+    user = yield mw.initUserAsync()
+    yield mw.loginUserAsync(user)
+    [res, body] = yield request.getAsync {uri: getURL('/db/article?filter[slug]="article-1"'), json: true}
+    expect(body.length).toBe(2)
+    done()
   
     
-  it 'accepts custom condition parameters', (done) ->
-    test = @
-    utils.run ->
-      yield mw.loginUserAsync(test.admin)
-      [res, body] = yield request.getAsync {uri: getURL('/db/article?conditions[select]="slug body"'), json: true}
-      expect(body.length).toBe(2)
-      for doc in body
-        expect(_.size(_.xor(_.keys(doc), ['_id', 'slug', 'body']))).toBe(0)
-      done()
+  it 'accepts custom condition parameters', (done) -> co =>
+    yield mw.loginUserAsync(@admin)
+    [res, body] = yield request.getAsync {uri: getURL('/db/article?conditions[select]="slug body"'), json: true}
+    expect(body.length).toBe(2)
+    for doc in body
+      expect(_.size(_.xor(_.keys(doc), ['_id', 'slug', 'body']))).toBe(0)
+    done()
   
     
-  it 'ignores custom condition parameters for non-admins', (done) ->
-    utils.run ->
-      user = yield mw.initUserAsync()
-      yield mw.loginUserAsync(user)
-      [res, body] = yield request.getAsync {uri: getURL('/db/article?conditions[select]="slug body"'), json: true}
-      expect(body.length).toBe(2)
-      for doc in body
-        expect(doc.name).toBeDefined()
-      done()
+  it 'ignores custom condition parameters for non-admins', (done) -> co ->
+    user = yield mw.initUserAsync()
+    yield mw.loginUserAsync(user)
+    [res, body] = yield request.getAsync {uri: getURL('/db/article?conditions[select]="slug body"'), json: true}
+    expect(body.length).toBe(2)
+    for doc in body
+      expect(doc.name).toBeDefined()
+    done()
   
     
-  it 'allows non-admins to view by i18n-coverage', (done) ->
-    utils.run ->
-      [res, body] = yield request.getAsync {uri: getURL('/db/article?view=i18n-coverage'), json: true}
-      expect(body.length).toBe(1)
-      expect(body[0].slug).toBe('article-1')
-      done()
+  it 'allows non-admins to view by i18n-coverage', (done) -> co ->
+    [res, body] = yield request.getAsync {uri: getURL('/db/article?view=i18n-coverage'), json: true}
+    expect(body.length).toBe(1)
+    expect(body[0].slug).toBe('article-1')
+    done()
   
 
-  it 'allows non-admins to search by text', (done) ->
-    utils.run ->
-      [res, body] = yield request.getAsync {uri: getURL('/db/article?term=moo'), json: true}
-      expect(body.length).toBe(1)
-      expect(body[0].slug).toBe('article-2')
-      done()
+  it 'allows non-admins to search by text', (done) -> co ->
+    [res, body] = yield request.getAsync {uri: getURL('/db/article?term=moo'), json: true}
+    expect(body.length).toBe(1)
+    expect(body[0].slug).toBe('article-2')
+    done()
 
 
 describe 'POST /db/article', ->
   
   articleData = { name: 'Article', body: 'Article', otherProp: 'not getting set' }
   
-  beforeEach (done) ->
-    test = @
-    utils.run ->
-      yield mw.clearModelsAsync([Article])
-      test.admin = yield mw.initAdminAsync({})
-      yield mw.loginUserAsync(test.admin)
-      [test.res, test.body] = yield request.postAsync {
-        uri: getURL('/db/article'), json: articleData 
-      }
-      done()
+  beforeEach (done) -> co =>
+    yield mw.clearModelsAsync([Article])
+    @admin = yield mw.initAdminAsync({})
+    yield mw.loginUserAsync(@admin)
+    [@res, @body] = yield request.postAsync {
+      uri: getURL('/db/article'), json: articleData 
+    }
+    done()
     
   
-  it 'creates a new Article, returning 201', (done) ->
-    test = @
-    utils.run ->
-      expect(test.res.statusCode).toBe(201)
-      article = yield Article.findById(test.body._id).exec()
-      expect(article).toBeDefined()
-      done()
+  it 'creates a new Article, returning 201', (done) -> co =>
+    expect(@res.statusCode).toBe(201)
+    article = yield Article.findById(@body._id).exec()
+    expect(article).toBeDefined()
+    done()
       
   
   it 'sets creator to the user who created it', ->
@@ -167,11 +146,10 @@ describe 'POST /db/article', ->
     expect(body.original).toBe(body._id)
     
   
-  it 'returns 422 when no input is provided', (done) ->
-    utils.run ->
-      [res, body] = yield request.postAsync { uri: getURL('/db/article') }
-      expect(res.statusCode).toBe(422)
-      done()
+  it 'returns 422 when no input is provided', (done) -> co ->
+    [res, body] = yield request.postAsync { uri: getURL('/db/article') }
+    expect(res.statusCode).toBe(422)
+    done()
 
       
   it 'allows you to set Article\'s editableProperties', ->
@@ -182,143 +160,123 @@ describe 'POST /db/article', ->
     expect(@body.otherProp).toBeUndefined()
   
     
-  it 'returns 422 when properties do not pass validation', (done) ->
-    utils.run ->
-      [res, body] = yield request.postAsync { 
-        uri: getURL('/db/article'), json: { i18nCoverage: 9001 } 
-      }
-      expect(res.statusCode).toBe(422)
-      expect(body.validationErrors).toBeDefined()
-      done()
+  it 'returns 422 when properties do not pass validation', (done) -> co ->
+    [res, body] = yield request.postAsync { 
+      uri: getURL('/db/article'), json: { i18nCoverage: 9001 } 
+    }
+    expect(res.statusCode).toBe(422)
+    expect(body.validationErrors).toBeDefined()
+    done()
 
       
   it 'allows admins to create Articles', -> # handled in beforeEach
   
     
-  it 'allows artisans to create Articles', (done) ->
-    utils.run ->
-      yield mw.clearModelsAsync([Article])
-      artisan = yield mw.initArtisanAsync({})
-      yield mw.loginUserAsync(artisan)
-      [res, body] = yield request.postAsync({uri: getURL('/db/article'), json: articleData })
-      expect(res.statusCode).toBe(201)
-      done()
+  it 'allows artisans to create Articles', (done) -> co ->
+    yield mw.clearModelsAsync([Article])
+    artisan = yield mw.initArtisanAsync({})
+    yield mw.loginUserAsync(artisan)
+    [res, body] = yield request.postAsync({uri: getURL('/db/article'), json: articleData })
+    expect(res.statusCode).toBe(201)
+    done()
   
   
-  it 'does not allow normal users to create Articles', (done) ->
-    utils.run ->
-      yield mw.clearModelsAsync([Article])
-      user = yield mw.initUserAsync({})
-      yield mw.loginUserAsync(user)
-      [res, body] = yield request.postAsync({uri: getURL('/db/article'), json: articleData })
-      expect(res.statusCode).toBe(403)
-      done()
+  it 'does not allow normal users to create Articles', (done) -> co ->
+    yield mw.clearModelsAsync([Article])
+    user = yield mw.initUserAsync({})
+    yield mw.loginUserAsync(user)
+    [res, body] = yield request.postAsync({uri: getURL('/db/article'), json: articleData })
+    expect(res.statusCode).toBe(403)
+    done()
       
     
-  it 'does not allow anonymous users to create Articles', (done) ->
-    utils.run ->
-      yield mw.clearModelsAsync([Article])
-      yield mw.logoutAsync()
-      [res, body] = yield request.postAsync({uri: getURL('/db/article'), json: articleData })
-      expect(res.statusCode).toBe(401)
-      done()
+  it 'does not allow anonymous users to create Articles', (done) -> co ->
+    yield mw.clearModelsAsync([Article])
+    yield mw.logoutAsync()
+    [res, body] = yield request.postAsync({uri: getURL('/db/article'), json: articleData })
+    expect(res.statusCode).toBe(401)
+    done()
   
   
-  it 'does not allow creating Articles with reserved words', (done) ->
-    utils.run ->
-      [res, body] = yield request.postAsync { uri: getURL('/db/article'), json: { name: 'Names' } }
-      expect(res.statusCode).toBe(422)
-      done()
+  it 'does not allow creating Articles with reserved words', (done) -> co ->
+    [res, body] = yield request.postAsync { uri: getURL('/db/article'), json: { name: 'Names' } }
+    expect(res.statusCode).toBe(422)
+    done()
   
       
-  it 'does not allow creating a second article of the same name', (done) ->
-    utils.run ->
-      [res, body] = yield request.postAsync { uri: getURL('/db/article'), json: articleData }
-      expect(res.statusCode).toBe(409)
-      done()
+  it 'does not allow creating a second article of the same name', (done) -> co ->
+    [res, body] = yield request.postAsync { uri: getURL('/db/article'), json: articleData }
+    expect(res.statusCode).toBe(409)
+    done()
       
       
 describe 'GET /db/article/:handle', ->
 
   articleData = { name: 'Some Name', body: 'Article', otherProp: 'not getting set' }
 
-  beforeEach (done) ->
-    test = @
-    utils.run ->
-      yield mw.clearModelsAsync([Article])
-      test.admin = yield mw.initAdminAsync({})
-      yield mw.loginUserAsync(test.admin)
-      [test.res, test.body] = yield request.postAsync {
-        uri: getURL('/db/article'), json: articleData
-      }
-      done()
+  beforeEach (done) -> co =>
+    yield mw.clearModelsAsync([Article])
+    @admin = yield mw.initAdminAsync({})
+    yield mw.loginUserAsync(@admin)
+    [@res, @body] = yield request.postAsync {
+      uri: getURL('/db/article'), json: articleData
+    }
+    done()
     
     
-  it 'returns Article by id', (done) ->
-    test = @
-    utils.run ->
-      [res, body] = yield request.getAsync {uri: getURL("/db/article/#{test.body._id}"), json: true}
-      expect(res.statusCode).toBe(200)
-      expect(_.isObject(body)).toBe(true)
-      done()
+  it 'returns Article by id', (done) -> co =>
+    [res, body] = yield request.getAsync {uri: getURL("/db/article/#{@body._id}"), json: true}
+    expect(res.statusCode).toBe(200)
+    expect(_.isObject(body)).toBe(true)
+    done()
       
       
-  it 'returns Article by slug', (done) ->
-    utils.run ->
-      [res, body] = yield request.getAsync {uri: getURL("/db/article/some-name"), json: true}
-      expect(res.statusCode).toBe(200)
-      expect(_.isObject(body)).toBe(true)
-      done()
+  it 'returns Article by slug', (done) -> co ->
+    [res, body] = yield request.getAsync {uri: getURL("/db/article/some-name"), json: true}
+    expect(res.statusCode).toBe(200)
+    expect(_.isObject(body)).toBe(true)
+    done()
       
       
-  it 'returns not found if handle does not exist in the db', (done) ->
-    utils.run ->
-      [res, body] = yield request.getAsync {uri: getURL("/db/article/dne"), json: true}
-      expect(res.statusCode).toBe(404)
-      done()
+  it 'returns not found if handle does not exist in the db', (done) -> co ->
+    [res, body] = yield request.getAsync {uri: getURL("/db/article/dne"), json: true}
+    expect(res.statusCode).toBe(404)
+    done()
       
       
 describe 'PUT /db/article/:handle', ->
 
   articleData = { name: 'Some Name', body: 'Article' }
 
-  beforeEach (done) ->
-    test = @
-    utils.run ->
-      yield mw.clearModelsAsync([Article])
-      test.admin = yield mw.initAdminAsync({})
-      yield mw.loginUserAsync(test.admin)
-      [test.res, test.body] = yield request.postAsync {
-        uri: getURL('/db/article'), json: articleData
-      }
-      done()
+  beforeEach (done) -> co =>
+    yield mw.clearModelsAsync([Article])
+    @admin = yield mw.initAdminAsync({})
+    yield mw.loginUserAsync(@admin)
+    [@res, @body] = yield request.postAsync {
+      uri: getURL('/db/article'), json: articleData
+    }
+    done()
     
   
-  it 'edits editable Article properties', (done) ->
-    test = @
-    utils.run ->
-      [res, body] = yield request.putAsync {uri: getURL("/db/article/#{test.body._id}"), json: { body: 'New body' }}
-      expect(body.body).toBe('New body')
-      done()
+  it 'edits editable Article properties', (done) -> co =>
+    [res, body] = yield request.putAsync {uri: getURL("/db/article/#{@body._id}"), json: { body: 'New body' }}
+    expect(body.body).toBe('New body')
+    done()
       
       
-  it 'updates the slug when the name is changed', (done) ->
-    test = @
-    utils.run ->
-      [res, body] = yield request.putAsync {uri: getURL("/db/article/#{test.body._id}"), json: json = { name: 'New name' }}
-      expect(body.name).toBe('New name')
-      expect(body.slug).toBe('new-name')
-      done()
+  it 'updates the slug when the name is changed', (done) -> co =>
+    [res, body] = yield request.putAsync {uri: getURL("/db/article/#{@body._id}"), json: json = { name: 'New name' }}
+    expect(body.name).toBe('New name')
+    expect(body.slug).toBe('new-name')
+    done()
       
       
-  it 'does not allow normal artisan, non-admins to make changes', (done) ->
-    test = @
-    utils.run ->
-      artisan = yield mw.initArtisanAsync({})
-      yield mw.loginUserAsync(artisan)
-      [res, body] = yield request.putAsync {uri: getURL("/db/article/#{test.body._id}"), json: { name: 'Another name' }}
-      expect(res.statusCode).toBe(403)
-      done()
+  it 'does not allow normal artisan, non-admins to make changes', (done) -> co =>
+    artisan = yield mw.initArtisanAsync({})
+    yield mw.loginUserAsync(artisan)
+    [res, body] = yield request.putAsync {uri: getURL("/db/article/#{@body._id}"), json: { name: 'Another name' }}
+    expect(res.statusCode).toBe(403)
+    done()
     
     
 #describe 'POST /db/article/:handle/new-version', ->
