@@ -7,6 +7,7 @@ module.exports.setup = (app) ->
   app.get('/db/article/:handle', mw.rest.getByHandle(Article))
   app.put('/db/article', mw.auth.checkHasPermission(['admin']), mw.rest.put(Article))
   app.post('/db/article/:handle/new-version', mw.auth.checkHasPermission(['admin', 'artisan']), mw.versions.postNewVersion(Article))
+  app.post('/db/article/:handle/version(/:version)?', mw.versions.getLatestVersion(Article))
 
   app.get '/db/products', require('./db/product').get
 

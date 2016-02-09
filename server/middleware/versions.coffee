@@ -5,6 +5,7 @@ sendwithus = require '../sendwithus'
 hipchat = require '../hipchat'
 _ = require 'lodash'
 wrap = require 'co-express'
+mongoose = require 'mongoose'
 
 module.exports =
   postNewVersion: (Model, options={}) -> wrap (req, res) ->
@@ -107,3 +108,39 @@ module.exports =
           sendwithus.api.send context, _.noop
 
     res.status(201).send(doc.toObject())
+
+    
+    
+  getLatestVersion: (Model, options={}) -> wrap (req, res) ->
+    # can get latest overall version, latest of a major version, or a specific version
+    original = req.params.handle
+    version = req.params.version
+    if not utils.isID(original)
+      throw new errors.UnprocessableEntity(res, 'Invalid MongoDB id: '+original) 
+
+    query = { 'original': mongoose.Types.ObjectId(original) }
+    if version?
+      version = version.split('.')
+      majorVersion = parseInt(version[0])
+      minorVersion = parseInt(version[1])
+      query['version.major'] = majorVersion unless _.isNaN(majorVersion)
+      query['version.minor'] = minorVersion unless _.isNaN(minorVersion)
+    dbq = Model.findOne(query)
+    
+    dbq.sort({ 'version.major': -1, 'version.minor': -1 })
+
+    # Make sure that permissions and version are fetched, but not sent back if they didn't ask for them.
+    projection = utils.getProjectFromReq(req)
+    extraProjectionProps = []
+    extraProjectionProps.push 'permissions' unless projection.permissions
+    extraProjectionProps.push 'version' unless projection.version
+    projection.permissions = 1
+    projection.version = 1
+    dbq.select(projection)
+
+    doc = yield dbq.exec()
+    throw new errors.NotFoundError(res) if not doc
+    return @sendForbiddenError(res) unless utils.hasAccessToDocument(req, doc)
+    doc = _.omit doc, extraProjectionProps if extraProjectionProps?
+    
+    res.status(200).send(doc.toObject())

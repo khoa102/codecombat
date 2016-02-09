@@ -209,6 +209,7 @@ module.exports = utils =
       catch SyntaxError
         throw new errors.UnprocessableEntity("Could not parse condition for key '#{key}'.")
 
+        
   viewSearch: (dbq, req, done) ->
     Model = dbq.model
     # TODO: Make this function only alter dbq or returns a find. It should not also execute the query.
@@ -310,5 +311,30 @@ module.exports = utils =
     if Model.schema.uses_coco_versions
       doc.set('original', doc._id)
       doc.set('creator', req.user._id)
+
+  hasAccessToDocument: (req, doc) ->
+    return true if req.user?.isAdmin()
+
+    if doc.schema.uses_coco_translation_coverage and req.method in ['post', 'put']
+      return true if @isJustFillingTranslations(req, doc)
+
+    if doc.schema.uses_coco_permissions
+      return doc.hasPermissionsForMethod?(req.user, req.method)
+    return true
+
+  isJustFillingTranslations: (req, doc) ->
+    differ = deltasLib.makeJSONDiffer()
+    omissions = ['original'].concat(deltasLib.DOC_SKIP_PATHS)
+    delta = differ.diff(_.omit(doc.toObject(), omissions), _.omit(req.body, omissions))
+    flattened = deltasLib.flattenDelta(delta)
+    _.all flattened, (delta) ->
+      # sometimes coverage gets moved around... allow other changes to happen to i18nCoverage
+      return false unless _.isArray(delta.o)
+      return true if 'i18nCoverage' in delta.dataPath
+      return false unless delta.o.length is 1
+      index = delta.deltaPath.indexOf('i18n')
+      return false if index is -1
+      return false if delta.deltaPath[index+1] in ['en', 'en-US', 'en-GB']  # English speakers are most likely just spamming, so always treat those as patches, not saves.
+      return true
 
 Promise.promisifyAll(module.exports)
