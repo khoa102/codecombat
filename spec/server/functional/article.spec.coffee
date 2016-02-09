@@ -465,9 +465,7 @@ describe 'POST /db/article/:handle/new-version', ->
     expect(hipchat.sendHipChatMessage).toHaveBeenCalled()
     done()
   
-  
-describe 'GET /db/article/:handle/version/:version', ->
-
+describe 'version fetching endpoints', ->
   articleData = { name: 'Original version', body: 'Article body' }
   articleOriginal = null
 
@@ -491,38 +489,50 @@ describe 'GET /db/article/:handle/version/:version', ->
     yield postNewVersion({ name: 'Latest minor version', body: 'New body', version: {major: 0} })
     yield postNewVersion({ name: 'Latest major version', body: 'New new body' })
     done()
-  
-  it 'returns the latest version for the given original article when :version is empty', utils.wrap (done) ->
-    [res, body] = yield request.getAsync { uri: getURL("/db/article/#{articleOriginal}/version"), json: true }
-    expect(body.name).toBe('Latest major version')
-    done()
-  
-  it 'returns the latest of a given major version when :version is X', utils.wrap (done) ->
-    [res, body] = yield request.getAsync { uri: getURL("/db/article/#{articleOriginal}/version/0"), json: true }
-    expect(body.name).toBe('Latest minor version')
-    done()
-  
-  it 'returns a specific version when :version is X.Y', utils.wrap (done) ->
-    [res, body] = yield request.getAsync { uri: getURL("/db/article/#{articleOriginal}/version/0.0"), json: true }
-    expect(body.name).toBe('Original version')
-    done()
-    
-  it 'returns 422 when the original value is invalid', utils.wrap (done) ->
-    [res, body] = yield request.getAsync { uri: getURL('/db/article/dne/version'), json: true }
-    expect(res.statusCode).toBe(422)
-    done()
 
-  it 'returns 404 when the original value cannot be found', utils.wrap (done) ->
-    [res, body] = yield request.getAsync { uri: getURL('/db/article/012345678901234567890123/version'), json: true }
-    expect(res.statusCode).toBe(404)
-    done()
+
+  describe 'GET /db/article/:handle/version/:version', ->
+  
+    it 'returns the latest version for the given original article when :version is empty', utils.wrap (done) ->
+      [res, body] = yield request.getAsync { uri: getURL("/db/article/#{articleOriginal}/version"), json: true }
+      expect(body.name).toBe('Latest major version')
+      done()
+    
+    it 'returns the latest of a given major version when :version is X', utils.wrap (done) ->
+      [res, body] = yield request.getAsync { uri: getURL("/db/article/#{articleOriginal}/version/0"), json: true }
+      expect(body.name).toBe('Latest minor version')
+      done()
+    
+    it 'returns a specific version when :version is X.Y', utils.wrap (done) ->
+      [res, body] = yield request.getAsync { uri: getURL("/db/article/#{articleOriginal}/version/0.0"), json: true }
+      expect(body.name).toBe('Original version')
+      done()
+      
+    it 'returns 422 when the original value is invalid', utils.wrap (done) ->
+      [res, body] = yield request.getAsync { uri: getURL('/db/article/dne/version'), json: true }
+      expect(res.statusCode).toBe(422)
+      done()
+  
+    it 'returns 404 when the original value cannot be found', utils.wrap (done) ->
+      [res, body] = yield request.getAsync { uri: getURL('/db/article/012345678901234567890123/version'), json: true }
+      expect(res.statusCode).toBe(404)
+      done()
   
   
-describe 'GET /db/article/:handle/versions', ->
-  
-  it 'returns an array of versions sorted by creation for the given original article'
-  
-  it 'is projected by default'
+  describe 'GET /db/article/:handle/versions', ->
+    
+    it 'returns an array of versions sorted by creation for the given original article', utils.wrap (done) ->
+      [res, body] = yield request.getAsync { uri: getURL("/db/article/#{articleOriginal}/versions"), json: true }
+      expect(body.length).toBe(3)
+      expect(body[0].name).toBe('Latest major version')
+      expect(body[1].name).toBe('Latest minor version')
+      expect(body[2].name).toBe('Original version')
+      done()
+      
+    it 'projects most properties by default', utils.wrap (done) ->
+      [res, body] = yield request.getAsync { uri: getURL("/db/article/#{articleOriginal}/versions"), json: true }
+      expect(body[0].body).toBeUndefined()
+      done()
   
   
 describe 'GET /db/article/:handle/files', ->

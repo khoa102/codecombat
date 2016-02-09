@@ -116,7 +116,7 @@ module.exports =
     original = req.params.handle
     version = req.params.version
     if not utils.isID(original)
-      throw new errors.UnprocessableEntity(res, 'Invalid MongoDB id: '+original) 
+      throw new errors.UnprocessableEntity('Invalid MongoDB id: '+original) 
 
     query = { 'original': mongoose.Types.ObjectId(original) }
     if version?
@@ -131,16 +131,29 @@ module.exports =
 
     # Make sure that permissions and version are fetched, but not sent back if they didn't ask for them.
     projection = utils.getProjectFromReq(req)
-    extraProjectionProps = []
-    extraProjectionProps.push 'permissions' unless projection.permissions
-    extraProjectionProps.push 'version' unless projection.version
-    projection.permissions = 1
-    projection.version = 1
-    dbq.select(projection)
+    if projection
+      extraProjectionProps = []
+      extraProjectionProps.push 'permissions' unless projection.permissions
+      extraProjectionProps.push 'version' unless projection.version
+      projection.permissions = 1
+      projection.version = 1
+      dbq.select(projection)
 
     doc = yield dbq.exec()
-    throw new errors.NotFoundError(res) if not doc
+    throw new errors.NotFound() if not doc
     return @sendForbiddenError(res) unless utils.hasAccessToDocument(req, doc)
     doc = _.omit doc, extraProjectionProps if extraProjectionProps?
     
     res.status(200).send(doc.toObject())
+
+
+  versions: (Model, options={}) -> wrap (req, res) ->
+    original = req.params.handle
+    dbq = Model.find({'original': mongoose.Types.ObjectId(original)})
+    dbq.sort({'created': -1})
+    dbq.limit(utils.getLimitFromReq(req))
+    dbq.skip(utils.getSkipFromReq(req))
+    dbq.select(utils.getProjectFromReq(req) or 'slug name version commitMessage created creator permissions')
+    
+    results = yield dbq.exec()
+    res.status(200).send(results)
