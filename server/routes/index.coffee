@@ -9,6 +9,7 @@ module.exports.setup = (app) ->
   app.post('/db/article/:handle/new-version', mw.auth.checkHasPermission(['admin', 'artisan']), mw.versions.postNewVersion(Article))
   app.get('/db/article/:handle/versions', mw.versions.versions(Article))
   app.get('/db/article/:handle/version/?(:version)?', mw.versions.getLatestVersion(Article))
+  app.get('/db/article/:handle/files', mw.files.files(Article, {module: 'article'}))
 
   app.get '/db/products', require('./db/product').get
 
