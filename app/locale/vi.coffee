@@ -143,7 +143,7 @@ module.exports = nativeDescription: "Tiếng Việt", englishDescription: "Vietn
     publish: "Chia sẻ"
     create: "Làm mới"
     fork: "Nĩa"
-    play: "Các cấp độ" # When used as an action verb, like "Play next level"
+    play: "Chơi" # When used as an action verb, like "Play next level"
     retry: "Chơi lại"
     actions: "Các Hành Động"
     info: "Thông tin"
