@@ -1366,12 +1366,19 @@ module.exports = nativeDescription: "Tiếng Việt", englishDescription: "Vietn
 #    tournament_blurb_blog: "on our blog"
     rules: "Những điều lệ"
 #    winners: "Winners"
+    winners: "Những người thắng cuộc!"
 #    league: "League"
+    league: "Giải"
 #    red_ai: "Red CPU" # "Red AI Wins", at end of multiplayer match playback
+    red_ai: "Máy phe đỏ"
 #    blue_ai: "Blue CPU"
+    blue_ai:"Máy phe xanh"
 #    wins: "Wins" # At end of multiplayer match playback
+    wins:"Những trận thắng"
 #    humans: "Red" # Ladder page display team name
+    humans: "Phe đỏ"
 #    ogres: "Blue"
+    orges: "Phe xanh"
 
   user:
     stats: "Chỉ số"
